@@ -1,8 +1,7 @@
 FROM node:20-alpine AS base
 
 # Install OpenSSL + required libs for Prisma
-RUN apk update && apk add --no-cache openssl openssl-dev libc6-compat gcompat
-
+RUN apk update && apk add --no-cache openssl openssl-dev libc6-compat gcompat openssl1.1-compat
 
 WORKDIR /app
 
@@ -11,14 +10,10 @@ RUN npm install --frozen-lockfile
 
 COPY . .
 
-# Prisma generate (now works because OpenSSL is installed)
 RUN npx prisma generate
-
 RUN npm run build
 
-
 FROM node:20-alpine AS production
-
 WORKDIR /app
 
 COPY --from=base /app/dist ./dist
