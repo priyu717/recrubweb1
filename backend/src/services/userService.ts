@@ -7,14 +7,16 @@ export const userService = {
   async getUsersByTenant(tenantId: string) {
     return prisma.user.findMany({
       where: { tenantId },
-      include: { role: true },
+      // ❌ include hata diya
       select: {
         id: true,
         email: true,
         firstName: true,
         lastName: true,
         createdAt: true,
-        role: { select: { name: true } }
+        role: {
+          select: { name: true }
+        }
       }
     });
   },
@@ -44,7 +46,9 @@ export const userService = {
         email: true,
         firstName: true,
         lastName: true,
-        role: { select: { name: true } }
+        role: {
+          select: { name: true }
+        }
       }
     });
   },
