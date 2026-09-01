@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: aicrm_postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: aicrm
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d aicrm"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: aicrm_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    command: redis-server --appendonly yes
+
+  backend:
+    build: ./backend
+    container_name: aicrm_backend
+    ports:
+      - "5000:5000"
+    environment:
+      DATABASE_URL: postgresql://admin:password123@postgres:5432/aicrm?schema=public
+      JWT_SECRET: super_secret_jwt_key_CHANGE_IN_PRODUCTION
+      JWT_REFRESH_SECRET: super_secret_refresh_key_CHANGE_IN_PRODUCTION
+      CLIENT_URL: http://localhost:3000
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -c "npx prisma migrate deploy && node dist/server.js"
+
+  frontend:
+    build: ./frontend
+    container_name: aicrm_frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+  redisdata:

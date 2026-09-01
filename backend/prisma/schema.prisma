@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User & Auth
+model User {
+  id             String    @id @default(uuid())
+  email          String    @unique
+  passwordHash   String
+  firstName      String
+  lastName       String
+  roleId         String
+  tenantId       String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  role           Role      @relation(fields: [roleId], references: [id])
+  tenant         Company   @relation(fields: [tenantId], references: [id])
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique // SUPER_ADMIN, COMPANY_ADMIN, RECRUITER, AGENT
+  permissions String[]
+  users       User[]
+}
+
+model Company {
+  id                  String   @id @default(uuid())
+  name                String
+  domain              String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  users               User[]
+  candidates          Candidate[]
+  clients             Client[]
+  leads               Lead[]
+  campaigns           Campaign[]
+  subscription        CompanySubscription?
+}
+
+model SubscriptionPlan {
+  id              String   @id @default(uuid())
+  name            String   @unique // FREE, STARTER, PRO, ENTERPRISE
+  maxUsers        Int
+  maxCandidates   Int
+  maxCallsPerMonth Int
+  maxCampaigns    Int
+  priceMonthly    Float
+  features        String[]
+  createdAt       DateTime @default(now())
+
+  subscriptions   CompanySubscription[]
+}
+
+model CompanySubscription {
+  id              String   @id @default(uuid())
+  companyId       String   @unique
+  planId          String
+  status          String   @default("ACTIVE") // ACTIVE, CANCELLED, EXPIRED
+  renewalDate     DateTime
+  callsUsed       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  company         Company          @relation(fields: [companyId], references: [id])
+  plan            SubscriptionPlan @relation(fields: [planId], references: [id])
+}
+
+model Candidate {
+  id                String   @id @default(uuid())
+  tenantId          String
+  firstName         String
+  lastName          String
+  email             String
+  phone             String?
+  location          String?
+  skills            String[]
+  experience        Float?
+  status            String   @default("NEW")
+  expectedSalary    Float?
+  noticePeriod      String?
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant            Company  @relation(fields: [tenantId], references: [id])
+  calls             Call[]
+  campaignLinks     CampaignCandidate[]
+}
+
+model Client {
+  id                String   @id @default(uuid())
+  tenantId          String
+  companyName       String
+  contactName       String
+  email             String
+  phone             String?
+  industry          String?
+  location          String?
+  status            String   @default("ACTIVE")
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant            Company  @relation(fields: [tenantId], references: [id])
+}
+
+model Lead {
+  id                String   @id @default(uuid())
+  tenantId          String
+  firstName         String
+  lastName          String
+  companyName       String?
+  email             String
+  phone             String?
+  status            String   @default("NEW")
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant            Company  @relation(fields: [tenantId], references: [id])
+}
+
+model Campaign {
+  id                String   @id @default(uuid())
+  tenantId          String
+  name              String
+  role              String
+  description       String?
+  status            String   @default("ACTIVE")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant            Company  @relation(fields: [tenantId], references: [id])
+  candidates        CampaignCandidate[]
+}
+
+model CampaignCandidate {
+  id                String   @id @default(uuid())
+  campaignId        String
+  candidateId       String
+  status            String   @default("SCREENING")
+  addedAt           DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  campaign          Campaign  @relation(fields: [campaignId], references: [id])
+  candidate         Candidate @relation(fields: [candidateId], references: [id])
+
+  @@unique([campaignId, candidateId])
+}
+
+model Call {
+  id                String   @id @default(uuid())
+  tenantId          String
+  candidateId       String
+  agentId           String
+  duration          Int?     @default(0)
+  status            String   @default("INITIATED")
+  disposition       String?
+  recordingUrl      String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  candidate         Candidate      @relation(fields: [candidateId], references: [id])
+  transcripts       CallTranscript[]
+}
+
+model CallTranscript {
+  id                String   @id @default(uuid())
+  callId            String
+  content           String
+  createdAt         DateTime @default(now())
+
+  call              Call @relation(fields: [callId], references: [id])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  tenantId    String
+  userId      String
+  action      String
+  resource    String
+  resourceId  String?
+  metadata    String?
+  createdAt   DateTime @default(now())
+}
